@@ -152,7 +152,7 @@ nextColor = 1
 
 gameover = false
 fallingX = 2
-fallingY = 1
+fallingY = 4
 score = 0
 scoreStr = "Score: "
 
@@ -177,7 +177,7 @@ function reset()
 	randomizeShape()
 	gameover = false
 	fallingX = 2
-	fallingY = 1
+	fallingY = 4
 	score = 0
 	scoreStr = "Score: "
 end
@@ -254,6 +254,7 @@ function weld()
 			end
 		end
 	end
+	checkClear()
 end
 
 function setBlock(x, y, id)
@@ -270,6 +271,7 @@ function rotate()
 	end
 	
 	local newRot = currentRot + 1
+	
 	if newRot > currentTile.typ then
 		newRot = 1
 	end
@@ -279,12 +281,42 @@ function rotate()
 	for x=0, 3 do
 		for y=0, 3 do
 			if newShape[y * 4 + x + 1] == 1 then
-				
+				if fallingX + x + 1 < 1 or fallingX + x + 1 > areaWidth then
+					cantRotate = true
+					return
+				end
+				if blockArea[fallingX + x + 1][fallingY - 3 + y] ~= 0 then
+					cantRotate = true
+					return
+				end
+			end
 		end
 	end
 	
+	currentRot = newRot
 	currentShape = currentTile[currentRot]
 	screen:invalidate()
+end
+
+function checkClear()
+	local cleared = true
+	for y=areaHeight, 1, -1 do
+		for x=1, areaWidth do
+			if blockArea[x][y] == 0 then
+				cleared = false
+				break
+			end
+		end
+		
+		if cleared then
+			for i=1, areaWidth do -- x
+				for j=y, 2, -1 do -- y
+					blockArea[i][j] = blockArea[i][j-1]
+				end
+			end
+		end
+		cleared = true
+	end
 end
 
 function movex(dir)
@@ -391,5 +423,6 @@ function on.arrowKey(key)
 		movex(true)
 	elseif key == "down" then
 		falldown()
+		screen:invalidate()
 	end
 end
