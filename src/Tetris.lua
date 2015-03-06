@@ -136,6 +136,7 @@ areaHeight = 16
 -- state data
 blockArea = {} -- 10x16
 gcColor = 0
+cantRotate = false
 
 --current
 currentTile = nil  -- unrotated shape
@@ -163,8 +164,16 @@ function reset()
 		end
 	end
 	
-	currentColor = {}
-	nextColor = {}
+	cantRotate = false
+	
+	currentTile = nil
+	currentShape = nil
+	currentColor = 1
+	currentRot = 1
+	nextTile = nil
+	nextShape = nil
+	nextColor = 1
+	nextRot = 1
 	randomizeShape()
 	gameover = false
 	fallingX = 2
@@ -174,6 +183,7 @@ function reset()
 end
 
 function randomizeShape()
+	cantRotate = false
 	fallingX = 2
 	fallingY = 4
 	
@@ -210,6 +220,8 @@ function on.construction()
 end
 
 function falldown()
+	cantRotate = false
+	--print("XY: " .. fallingX .. " " .. fallingY)
 	if fallingY == areaHeight then
 		weld()
 		randomizeShape()
@@ -217,9 +229,9 @@ function falldown()
 	else
 		for x=0, 3 do
 			for y=3, 0, -1 do
-				if currentShape[y * 4 + x] == 1 then
-					if blockArea[fallingX + x][fallingY + 3 - y + 1] ~= 0 then
-						print("whaa")
+				if currentShape[y * 4 + x + 1] == 1 then
+					if blockArea[fallingX + x + 1][fallingY - 3 + y + 1] ~= 0 then
+						--print("whaa " .. fallingX + x .. " " .. fallingY + 3 - y + 1)
 						weld()
 						randomizeShape()
 						screen:invalidate()
@@ -237,8 +249,8 @@ end
 function weld()
 	for x=3, 0, -1 do
 		for y=3, 0, -1 do
-			if currentShape[y * 4 + x] == 1 then
-				setBlock(fallingX + x, fallingY - 3 + y, currentColor.id)
+			if currentShape[y * 4 + x + 1] == 1 then
+				setBlock(fallingX + x + 1, fallingY - 3 + y, currentColor.id)
 			end
 		end
 	end
@@ -253,26 +265,43 @@ function setBlock(x, y, id)
 end
 
 function rotate()
-	currentRot = currentRot + 1
-	if currentRot > currentTile.typ then
-		currentRot = 1
+	if cantRotate then
+		return
+	end
+	
+	local newRot = currentRot + 1
+	if newRot > currentTile.typ then
+		newRot = 1
+	end
+	
+	local newShape = currentTile[newRot]
+	
+	for x=0, 3 do
+		for y=0, 3 do
+			if newShape[y * 4 + x + 1] == 1 then
+				
+		end
 	end
 	
 	currentShape = currentTile[currentRot]
 	screen:invalidate()
 end
 
-function movex(dir) -- broken
+function movex(dir)
+	cantRotate = false
 	if dir then
-		local width = 4
+		local width = 0
 		for y=3, 0, -1 do
 			for x=3, 0, -1 do
 				if currentShape[y * 4 + x + 1] == 1 then
-					if fallingX + x + 1 > areaWidth then
+					if fallingX + x + 2 > areaWidth then
 						return
 					end
-					if blockArea[fallingX + x + 1][fallingY - y] ~= 0 then
+					if blockArea[fallingX + x + 2][fallingY - 3 + y] ~= 0 then
 						return
+					end
+					if x > width then
+						width = x + 1
 					end
 				end
 			end
@@ -284,6 +313,20 @@ function movex(dir) -- broken
 			fallingX = areaWidth - width
 		end
 	else
+		--local width = 4
+		for y=3, 0, -1 do
+			for x=0, 3 do
+				if currentShape[y * 4 + x + 1] == 1 then
+					if fallingX + x <= 0 then
+						return
+					end
+					if blockArea[fallingX + x][fallingY - 3 + y] ~= 0 then
+						return
+					end
+				end
+			end
+		end
+		
 		fallingX = fallingX - 1
 		
 		if fallingX < 0 then
