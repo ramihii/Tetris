@@ -132,11 +132,13 @@ shapeCount = 7
 tileSize = 13
 areaWidth = 10
 areaHeight = 16
+dropSpeed = 1
 
 -- state data
 blockArea = {} -- 10x16
 gcColor = 0
 cantRotate = false
+paused = false
 
 --current
 currentTile = nil  -- unrotated shape
@@ -155,6 +157,7 @@ fallingX = 2
 fallingY = 4
 score = 0
 scoreStr = "Score: "
+gameoverStr = "Game Over"
 
 function reset()
 	for x=1, areaWidth do
@@ -180,6 +183,7 @@ function reset()
 	fallingY = 4
 	score = 0
 	scoreStr = "Score: "
+	paused = false
 end
 
 function randomizeShape()
@@ -216,7 +220,44 @@ function randomizeShape()
 end
 
 function on.construction()
-	reset()
+	gameover = true
+	gameStart()
+end
+
+function on.timer()
+	if not gameover then
+		falldown()
+		screen:invalidate()
+	end
+end
+
+function gameEnd()
+	gameover = true
+	timer.stop()
+end
+
+function gameStart()
+	if gameover == true then
+		reset()
+		timer.start(dropSpeed)
+	end
+end
+
+function on.charIn(chr)
+	if chr == "r" or chr == "R" then
+		timer.stop()
+		gameover = true
+		
+		gameStart()
+	elseif chr == "p" or chr == "P" then
+		if paused then
+			timer.start(dropSpeed)
+			paused = false
+		else
+			timer.stop()
+			paused = true
+		end
+	end
 end
 
 function falldown()
@@ -238,7 +279,6 @@ function falldown()
 						return
 					end
 				end
-				
 			end
 		end
 		
@@ -247,6 +287,9 @@ function falldown()
 end
 
 function weld()
+	if fallingY == 4 then
+		gameEnd()
+	end
 	for x=3, 0, -1 do
 		for y=3, 0, -1 do
 			if currentShape[y * 4 + x + 1] == 1 then
@@ -314,6 +357,9 @@ function checkClear()
 					blockArea[i][j] = blockArea[i][j-1]
 				end
 			end
+			updateScore(50)
+			checkClear()
+			return
 		end
 		cleared = true
 	end
@@ -369,8 +415,15 @@ function movex(dir)
 	--print(fallingX .. " " .. fallingY)
 end
 
+function updateScore(amt)
+	score = score + amt
+	scoreStr = "Score: " .. score
+end
+
 function on.paint(gc)
 	--print(scrWidth .. " " .. scrHeight)
+	gc:setColorRGB(0, 255, 255)
+	gc:drawString(scoreStr, areaWidth * tileSize, 10, "top")
 	gc:setColorRGB(100, 100, 100)
 	gcColor = 0
 	gc:fillRect(0,0, areaWidth * tileSize, areaHeight * tileSize)
@@ -378,6 +431,12 @@ function on.paint(gc)
 	drawArea(gc)
 	
 	drawFalling(gc)
+	
+	if gameover then
+		gc:setColorRGB(255, 0, 0)
+		gcColor = 0
+		gc:drawString(gameoverStr, scrWidth/2 - gc:getStringWidth(gameoverStr)/2, scrHeight/2 - gc:getStringHeight(gameoverStr))
+	end
 end
 
 function drawArea(gc)
@@ -413,10 +472,15 @@ function setColor(id, gc)
 end
 
 function on.enterKey()
-	rotate()
+	if not gameover and not paused then
+		rotate()
+	end
 end
 
 function on.arrowKey(key)
+	if gameover or paused then
+		return
+	end
 	if key == "left" then
 		movex(false)
 	elseif key == "right" then
